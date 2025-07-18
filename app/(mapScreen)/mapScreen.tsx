@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Location from "expo-location";
 import React, { useEffect, useState } from "react";
 import {
@@ -15,27 +14,21 @@ import {
 import MapView, { MapPressEvent, Marker } from "react-native-maps";
 import { colors } from "../../constants/Colors";
 import useAuth from "../../hooks/useAuth";
+import { Pin, usePins } from "../../hooks/usePins";
 
 const PIXEL_FONT = colors.pixelFont;
-const PINS_STORAGE_KEY = 'user_pins';
-
-interface Pin {
-  latitude: number;
-  longitude: number;
-  note: string;
-}
 
 export default function MapScreen() {
   const { signOut } = useAuth();
+  const { pins, loading: pinsLoading, error: pinsError, addPin, deletePin, clearError } = usePins();
 
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
-  const [pins, setPins] = useState<Pin[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
   const [detailsModalVisible, setDetailsModalVisible] = useState(false);
   const [selectedPin, setSelectedPin] = useState<Pin | null>(null);
-  const [selectedPinIndex, setSelectedPinIndex] = useState<number | null>(null);
   const [newPinCoords, setNewPinCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [noteInput, setNoteInput] = useState("");
+  const [savingPin, setSavingPin] = useState(false);
 
   // Load current location
   useEffect(() => {
@@ -51,48 +44,33 @@ export default function MapScreen() {
     })();
   }, []);
 
-  // Load saved pins from storage
+  // Debug: Log modal state changes
   useEffect(() => {
-    const loadPins = async () => {
-      try {
-        const savedPins = await AsyncStorage.getItem(PINS_STORAGE_KEY);
-        if (savedPins) {
-          setPins(JSON.parse(savedPins));
-        }
-      } catch (error) {
-        console.error('Error loading pins:', error);
-      }
-    };
+    console.log('🔔 Details modal state changed:', detailsModalVisible);
+  }, [detailsModalVisible]);
 
-    loadPins();
-  }, []);
-
-  // Save pins to storage whenever pins array changes
+  // Debug: Log selected pin changes
   useEffect(() => {
-    const savePins = async () => {
-      try {
-        await AsyncStorage.setItem(PINS_STORAGE_KEY, JSON.stringify(pins));
-      } catch (error) {
-        console.error('Error saving pins:', error);
-      }
-    };
+    console.log('📍 Selected pin changed:', selectedPin?.id || 'null');
+  }, [selectedPin]);
 
-    savePins();
+  // Debug: Log pins array changes
+  useEffect(() => {
+    console.log('📋 Pins loaded:', pins.length, 'pins');
   }, [pins]);
 
   // Handle pin tap to show details
-  const handlePinPress = (pin: Pin, index: number) => {
-    console.log('Pin pressed:', pin, index); // Debug log
+  const handlePinPress = (pin: Pin) => {
+    console.log('🔘 Pin pressed:', pin.id, pin.note); // Debug log
     setSelectedPin(pin);
-    setSelectedPinIndex(index);
     setDetailsModalVisible(true);
   };
 
   // Close details modal
   const closeDetailsModal = () => {
+    console.log('❌ Closing details modal'); // Debug log
     setDetailsModalVisible(false);
     setSelectedPin(null);
-    setSelectedPinIndex(null);
   };
 
   // Cancel add note modal
@@ -106,60 +84,75 @@ export default function MapScreen() {
   const handleMapPress = (event: MapPressEvent) => {
     // Don't handle if any modal is open
     if (modalVisible || detailsModalVisible) return;
-
-    console.log('Map pressed'); // Debug log
+    
+    console.log('🗺️ Map pressed'); // Debug log
     const { coordinate } = event.nativeEvent;
     setNewPinCoords(coordinate);
     setModalVisible(true);
   };
 
   // Save new pin with note
-  const saveNote = () => {
-    if (newPinCoords && noteInput.trim()) {
-      const newPin: Pin = {
-        latitude: newPinCoords.latitude,
-        longitude: newPinCoords.longitude,
-        note: noteInput.trim(),
-      };
-      setPins(prevPins => [...prevPins, newPin]);
-    }
+  const saveNote = async () => {
+    if (!newPinCoords || !noteInput.trim()) return;
 
-    // Always reset modal regardless of whether pin was saved
-    cancelAddNote();
+    setSavingPin(true);
+    try {
+      await addPin(newPinCoords.latitude, newPinCoords.longitude, noteInput.trim());
+      cancelAddNote();
+    } catch (error) {
+      console.error('Error saving pin:', error);
+      // Error is handled by the usePins hook
+    } finally {
+      setSavingPin(false);
+    }
   };
 
   // Delete selected pin
-  const deletePin = async () => {
-    if (selectedPinIndex !== null) {
-      const updatedPins = pins.filter((_, index) => index !== selectedPinIndex);
-      setPins(updatedPins);
+  const handleDeletePin = async () => {
+    if (!selectedPin?.id) return;
 
-      // Explicitly save the updated pins array (including empty array)
-      try {
-        await AsyncStorage.setItem(PINS_STORAGE_KEY, JSON.stringify(updatedPins));
-      } catch (error) {
-        console.error('Error saving pins after deletion:', error);
-      }
+    try {
+      await deletePin(selectedPin.id);
+      closeDetailsModal();
+    } catch (error) {
+      console.error('Error deleting pin:', error);
+      // Error is handled by the usePins hook
     }
-
-    // Close modal immediately
-    setDetailsModalVisible(false);
-    setSelectedPin(null);
-    setSelectedPinIndex(null);
   };
 
+  // Sign out handler
   const handleSignOut = async () => {
     try {
       await signOut();
-      console.log("Signed out");
     } catch (error) {
       console.error("Sign out error:", error);
     }
   };
 
+  // Emergency reset for debugging
+  const emergencyReset = () => {
+    console.log('🚨 Emergency reset triggered');
+    setModalVisible(false);
+    setDetailsModalVisible(false);
+    setSelectedPin(null);
+    setNewPinCoords(null);
+    setNoteInput("");
+    setSavingPin(false);
+  };
+
+  // Show loading if location or pins are loading
+  const isLoading = !location || pinsLoading;
+
   return (
     <SafeAreaView style={styles.container}>
-      {location ? (
+      {isLoading ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.subtitle}>
+            {!location ? "Loading your location..." : "Loading your pins..."}
+          </Text>
+          <ActivityIndicator size="large" color={colors.accent} />
+        </View>
+      ) : (
         <MapView
           style={styles.map}
           initialRegion={{
@@ -180,71 +173,94 @@ export default function MapScreen() {
           />
 
           {/* Render saved pins */}
-          {pins.map((pin, index) => (
-            <Marker
-              key={`pin-${index}-${pin.latitude}-${pin.longitude}`}
-              coordinate={{ latitude: pin.latitude, longitude: pin.longitude }}
-              title={`Pin ${index + 1}`}
-              description={pin.note}
-              pinColor="orange"
-              onPress={(event) => {
-                event.stopPropagation();
-                console.log('Marker onPress triggered for pin:', index);
-                handlePinPress(pin, index);
-              }}
-              onCalloutPress={() => {
-                console.log('Callout pressed for pin:', index);
-                handlePinPress(pin, index);
-              }}
-            />
-          ))}
+          {pins.map((pin, index) => {
+            console.log(`🗺️ Rendering pin ${index}:`, pin.id, pin.note.substring(0, 20));
+            return (
+              <Marker
+                key={pin.id || `pin-${index}`}
+                coordinate={{ latitude: pin.latitude, longitude: pin.longitude }}
+                title={`Pin ${index + 1}`}
+                description={pin.note}
+                pinColor="orange"
+                onPress={(event) => {
+                  console.log('🔘 Marker onPress event triggered for:', pin.id);
+                  event.stopPropagation();
+                  handlePinPress(pin);
+                }}
+                onCalloutPress={() => {
+                  console.log('💬 Callout pressed for:', pin.id);
+                  handlePinPress(pin);
+                }}
+                onSelect={() => {
+                  console.log('✅ Marker selected:', pin.id);
+                }}
+                onDeselect={() => {
+                  console.log('❌ Marker deselected:', pin.id);
+                }}
+              />
+            );
+          })}
         </MapView>
-      ) : (
-        <View style={styles.loadingContainer}>
-          <Text style={styles.subtitle}>Loading your location...</Text>
-          <ActivityIndicator size="large" color={colors.accent} />
-        </View>
       )}
 
-      {/* Sign out button */}
-      <View style={styles.floatingUI}>
+      {/* Header UI */}
+      <View style={styles.headerUI}>
         <Text style={styles.title}>Map Screen</Text>
         <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
           <Text style={styles.signOutButtonText}>SIGN OUT</Text>
         </TouchableOpacity>
-
-        {/* Debug info
-        <View style={styles.debugContainer}>
-          <Text style={styles.debugText}>Pins: {pins.length}</Text>
-          <Text style={styles.debugText}>Details Modal: {detailsModalVisible ? 'OPEN' : 'CLOSED'}</Text>
-          <Text style={styles.debugText}>Add Modal: {modalVisible ? 'OPEN' : 'CLOSED'}</Text>
-          
-          {pins.length > 0 && (
-            <TouchableOpacity 
-              style={styles.testButton} 
-              onPress={() => handlePinPress(pins[0], 0)}
-            >
-              <Text style={styles.testButtonText}>Test First Pin</Text>
-            </TouchableOpacity>
-          )}
-        </View> */}
       </View>
 
+      {/* Debug Panel
+      <View style={styles.debugPanel}>
+        <Text style={styles.debugText}>Pins: {pins.length}</Text>
+        <Text style={styles.debugText}>
+          Details Modal: {detailsModalVisible ? '✅ OPEN' : '❌ CLOSED'}
+        </Text>
+        <Text style={styles.debugText}>
+          Selected Pin: {selectedPin?.id || 'None'}
+        </Text>
+        {pins.length > 0 && (
+          <TouchableOpacity 
+            style={styles.testButton} 
+            onPress={() => handlePinPress(pins[0])}
+          >
+            <Text style={styles.testButtonText}>TEST FIRST PIN</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity 
+          style={[styles.testButton, { backgroundColor: colors.error, marginTop: 10 }]} 
+          onPress={emergencyReset}
+        >
+          <Text style={styles.testButtonText}>RESET MODALS</Text>
+        </TouchableOpacity>
+      </View> */}
+
+      {/* Error display */}
+      {pinsError && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{pinsError}</Text>
+          <TouchableOpacity onPress={clearError} style={styles.errorCloseButton}>
+            <Text style={styles.errorCloseText}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Modal for note input */}
-      <Modal
-        visible={modalVisible}
-        transparent={true}
+      <Modal 
+        visible={modalVisible} 
+        transparent={true} 
         animationType="fade"
         onRequestClose={cancelAddNote}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
           onPress={cancelAddNote}
         >
-          <TouchableOpacity
-            style={styles.modalContainer}
-            activeOpacity={1}
+          <TouchableOpacity 
+            style={styles.modalContainer} 
+            activeOpacity={1} 
             onPress={(e) => e.stopPropagation()}
           >
             <Text style={styles.modalTitle}>Add a Note</Text>
@@ -256,49 +272,82 @@ export default function MapScreen() {
               onChangeText={setNoteInput}
               multiline
               autoFocus={true}
+              editable={!savingPin}
             />
-            <TouchableOpacity style={styles.saveButton} onPress={saveNote}>
-              <Text style={styles.saveButtonText}>Save Pin</Text>
+            <TouchableOpacity 
+              style={[styles.saveButton, savingPin && styles.buttonDisabled]} 
+              onPress={saveNote}
+              disabled={savingPin || !noteInput.trim()}
+            >
+              <Text style={styles.saveButtonText}>
+                {savingPin ? "SAVING..." : "SAVE PIN"}
+              </Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={cancelAddNote}>
-              <Text style={styles.cancelButtonText}>Cancel</Text>
+            <TouchableOpacity 
+              style={styles.cancelButton} 
+              onPress={cancelAddNote}
+              disabled={savingPin}
+            >
+              <Text style={styles.cancelButtonText}>CANCEL</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
       {/* Modal for pin details */}
-      <Modal
-        visible={detailsModalVisible}
-        transparent={true}
+      <Modal 
+        visible={detailsModalVisible} 
+        transparent={true} 
         animationType="fade"
         onRequestClose={closeDetailsModal}
+        onShow={() => console.log('📱 Details modal shown')}
+        onDismiss={() => console.log('📱 Details modal dismissed')}
       >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={closeDetailsModal}
+        <TouchableOpacity 
+          style={styles.modalOverlay} 
+          activeOpacity={1} 
+          onPress={() => {
+            console.log('🔘 Modal overlay pressed');
+            closeDetailsModal();
+          }}
         >
-          <TouchableOpacity
-            style={styles.modalContainer}
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation()}
+          <TouchableOpacity 
+            style={styles.modalContainer} 
+            activeOpacity={1} 
+            onPress={(e) => {
+              console.log('🔘 Modal container pressed');
+              e.stopPropagation();
+            }}
           >
             <Text style={styles.modalTitle}>Pin Details</Text>
             {selectedPin ? (
               <View style={styles.pinDetailsContent}>
-                <Text style={styles.pinDetailsText}>Latitude: {selectedPin.latitude.toFixed(6)}</Text>
-                <Text style={styles.pinDetailsText}>Longitude: {selectedPin.longitude.toFixed(6)}</Text>
-                <Text style={styles.pinDetailsText}>Note: {selectedPin.note}</Text>
+                <Text style={styles.pinDetailsText}>
+                  ID: {selectedPin.id}
+                </Text>
+                <Text style={styles.pinDetailsText}>
+                  Latitude: {selectedPin.latitude.toFixed(6)}
+                </Text>
+                <Text style={styles.pinDetailsText}>
+                  Longitude: {selectedPin.longitude.toFixed(6)}
+                </Text>
+                <Text style={styles.pinDetailsText}>
+                  Note: {selectedPin.note}
+                </Text>
+                {selectedPin.created_at && (
+                  <Text style={styles.pinDetailsText}>
+                    Created: {new Date(selectedPin.created_at).toLocaleDateString()}
+                  </Text>
+                )}
               </View>
             ) : (
-              <Text style={styles.pinDetailsText}>No pin selected</Text>
+              <Text style={styles.pinDetailsText}>No pin data available</Text>
             )}
-            <TouchableOpacity style={styles.deleteButton} onPress={deletePin}>
-              <Text style={styles.deleteButtonText}>Delete Pin</Text>
+            <TouchableOpacity style={styles.deleteButton} onPress={handleDeletePin}>
+              <Text style={styles.deleteButtonText}>DELETE PIN</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.cancelButton} onPress={closeDetailsModal}>
-              <Text style={styles.cancelButtonText}>Close</Text>
+              <Text style={styles.cancelButtonText}>CLOSE</Text>
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
@@ -316,7 +365,7 @@ const styles = StyleSheet.create({
     width: Dimensions.get("window").width,
     height: Dimensions.get("window").height,
   },
-  floatingUI: {
+  headerUI: {
     position: "absolute",
     top: 60,
     left: 20,
@@ -449,6 +498,9 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     textTransform: "uppercase",
   },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
   pinDetailsContent: {
     marginBottom: 20,
     paddingHorizontal: 10,
@@ -509,27 +561,60 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     textTransform: "uppercase",
   },
-  debugContainer: {
-    marginTop: 10,
-    backgroundColor: colors.card,
-    padding: 10,
+  errorContainer: {
+    position: "absolute",
+    top: 100,
+    left: 20,
+    right: 20,
+    backgroundColor: colors.error,
+    padding: 15,
+    borderRadius: 0,
+    borderWidth: 4,
+    borderColor: colors.text,
+    shadowColor: colors.error,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 0,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  errorText: {
+    color: colors.background,
+    fontSize: 16,
+    fontFamily: PIXEL_FONT,
+    letterSpacing: 1,
+  },
+  errorCloseButton: {
+    padding: 5,
+  },
+  errorCloseText: {
+    fontSize: 24,
+    color: colors.background,
+  },
+  debugPanel: {
+    position: "absolute",
+    top: 100,
+    left: 20,
+    backgroundColor: "rgba(0,0,0,0.7)",
+    padding: 15,
+    borderRadius: 0,
     borderWidth: 4,
     borderColor: colors.accent,
-    borderRadius: 0,
     shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.8,
     shadowRadius: 0,
+    zIndex: 10,
   },
   debugText: {
+    color: colors.background,
     fontSize: 14,
-    color: colors.text,
     fontFamily: PIXEL_FONT,
     letterSpacing: 1,
     marginBottom: 5,
   },
   testButton: {
-    marginTop: 10,
     backgroundColor: colors.accent,
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -544,7 +629,7 @@ const styles = StyleSheet.create({
   },
   testButtonText: {
     color: colors.background,
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: "900",
     fontFamily: PIXEL_FONT,
     letterSpacing: 2,
