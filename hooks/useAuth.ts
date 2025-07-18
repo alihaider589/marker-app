@@ -1,4 +1,4 @@
-import { clearSession, clearUser, setUser, setUserSession } from "@/store/slices/authSlice";
+import { clearSession, clearUser, setAuthRestored, setUser, setUserSession } from "@/store/slices/authSlice";
 import { useEffect } from "react";
 import { useDispatch } from "react-redux";
 import { supabase } from "../lib/supabase";
@@ -16,14 +16,20 @@ function useAuth() {
         if (session) {
           dispatch(setUser(session.user));
           dispatch(setUserSession(session));
+        } else {
+          // No session found, clear user but mark restoration as complete
+          dispatch(clearUser());
         }
       } catch (error) {
         console.error("Error checking session:", error);
+        // Even if there's an error, mark restoration as complete
+        dispatch(setAuthRestored());
       }
     };
 
     checkSession();
 
+    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session) {

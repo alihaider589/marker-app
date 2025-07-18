@@ -33,5 +33,6 @@ export const colors = {
   border: '#00FFD0', // cyan border (for pixel effect)
   text: '#fff',      // main text color
   textAccent: '#00FF41', // accent text color
+  error: '#FF073A',  // red error color for pixel theme
   pixelFont: 'SpaceMono-Regular', // pixel font
 };

@@ -5,12 +5,14 @@ interface AuthState {
   user: any;
   isAuthenticated: boolean;
   session: any;
+  isRestoring: boolean;
 }
 
 const initialState: AuthState = {
   user: null,
   isAuthenticated: false,
   session: null,
+  isRestoring: true, // Start as true to prevent premature navigation
 };
 
 const authSlice = createSlice({
@@ -20,6 +22,7 @@ const authSlice = createSlice({
     setUser(state, action: PayloadAction<any>) {
       state.user = action.payload;
       state.isAuthenticated = !!action.payload;
+      state.isRestoring = false; // Auth check complete
     },
     setUserSession(state, action: PayloadAction<any>) {
       state.session = action.payload;
@@ -30,10 +33,14 @@ const authSlice = createSlice({
     clearUser(state) {
       state.user = null;
       state.isAuthenticated = false;
+      state.isRestoring = false; // Auth check complete
+    },
+    setAuthRestored(state) {
+      state.isRestoring = false; // Mark restoration as complete
     },
   },
 });
 
-export const { setUser, clearUser, setUserSession, clearSession } =
+export const { setUser, clearUser, setUserSession, clearSession, setAuthRestored } =
   authSlice.actions;
 export default authSlice.reducer;

@@ -1,17 +1,42 @@
 import {
-    DarkTheme,
-    DefaultTheme,
-    ThemeProvider,
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 
-import { store } from "@/store";
+import { persistor, store } from "@/store";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
+import { ActivityIndicator, Text, View } from "react-native";
 import { Provider, useSelector } from "react-redux";
+import { PersistGate } from "redux-persist/integration/react";
+import { colors } from "../constants/Colors";
 import { useColorScheme } from "../hooks/useColorScheme";
+
+// Loading component for PersistGate
+function LoadingScreen() {
+  return (
+    <View style={{ 
+      flex: 1, 
+      justifyContent: 'center', 
+      alignItems: 'center', 
+      backgroundColor: colors.background 
+    }}>
+      <ActivityIndicator size="large" color={colors.accent} />
+      <Text style={{ 
+        color: colors.text, 
+        fontSize: 18, 
+        marginTop: 20,
+        fontFamily: colors.pixelFont 
+      }}>
+        Loading...
+      </Text>
+    </View>
+  );
+}
 
 // Create a wrapper component to handle auth routing
 function RootLayoutNav() {
@@ -20,9 +45,12 @@ function RootLayoutNav() {
   const router = useRouter();
   
   // Get auth state from Redux store
-  const { isAuthenticated, user } = useSelector((state: any) => state.auth);
+  const { isAuthenticated, isRestoring } = useSelector((state: any) => state.auth);
 
   useEffect(() => {
+    // Don't navigate until auth restoration is complete
+    if (isRestoring) return;
+
     const inAuthGroup = segments[0] === "(auth)";
     
     if (!isAuthenticated && !inAuthGroup) {
@@ -32,7 +60,12 @@ function RootLayoutNav() {
       // User is authenticated but still in auth group, redirect to main app
       router.replace("/(mapScreen)/mapScreen");
     }
-  }, [isAuthenticated, segments]);
+  }, [isAuthenticated, isRestoring, segments]);
+
+  // Show loading screen while restoring auth state
+  if (isRestoring) {
+    return <LoadingScreen />;
+  }
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
@@ -67,7 +100,9 @@ export default function RootLayout() {
 
   return (
     <Provider store={store}>
-      <RootLayoutNav />
+      <PersistGate loading={<LoadingScreen />} persistor={persistor}>
+        <RootLayoutNav />
+      </PersistGate>
     </Provider>
   );
 }
