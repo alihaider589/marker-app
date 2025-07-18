@@ -53,7 +53,6 @@ export default function Signup() {
             setShowErrorPopup(true);
             setType("success");
 
-            // Navigate to signin after successful signup
             setTimeout(() => {
                 router.push("/(auth)/Signin");
             }, 2000);
