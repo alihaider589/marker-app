@@ -12,7 +12,9 @@ import {
   View,
 } from "react-native";
 import MapView, { MapPressEvent, Marker } from "react-native-maps";
+import IconSelector from "../../components/IconSelector";
 import { colors } from "../../constants/Colors";
+import { PinCategory, PinColor, PinIconName, getCategoryInfo } from "../../constants/PinTypes";
 import useAuth from "../../hooks/useAuth";
 import { Pin, usePins } from "../../hooks/usePins";
 
@@ -30,6 +32,11 @@ export default function MapScreen() {
   const [noteInput, setNoteInput] = useState("");
   const [savingPin, setSavingPin] = useState(false);
 
+  // Icon selector state
+  const [selectedIcon, setSelectedIcon] = useState<PinIconName>('map-pin');
+  const [selectedColor, setSelectedColor] = useState<PinColor>('#FF6B6B');
+  const [selectedCategory, setSelectedCategory] = useState<PinCategory>('general');
+
   // Load current location
   useEffect(() => {
     (async () => {
@@ -44,26 +51,30 @@ export default function MapScreen() {
     })();
   }, []);
 
-  // Debug: Log modal state changes
+  // Debug: Track modal state changes
   useEffect(() => {
-    console.log('🔔 Details modal state changed:', detailsModalVisible);
+    console.log('📊 Details modal state changed to:', detailsModalVisible);
   }, [detailsModalVisible]);
 
-  // Debug: Log selected pin changes
+  // Debug: Track selected pin changes
   useEffect(() => {
-    console.log('📍 Selected pin changed:', selectedPin?.id || 'null');
+    console.log('📍 Selected pin changed to:', selectedPin?.id || 'null');
   }, [selectedPin]);
 
-  // Debug: Log pins array changes
+  // Debug: Track pins loading
   useEffect(() => {
-    console.log('📋 Pins loaded:', pins.length, 'pins');
+    console.log('📋 Pins loaded:', pins.length, 'total pins');
+    pins.forEach((pin, idx) => {
+      console.log(`  Pin ${idx}: ${pin.id} - ${pin.category} - ${pin.note.substring(0, 20)}...`);
+    });
   }, [pins]);
 
   // Handle pin tap to show details
   const handlePinPress = (pin: Pin) => {
-    console.log('🔘 Pin pressed:', pin.id, pin.note); // Debug log
+    console.log('🔘 Pin pressed:', pin.id, pin.category); // Debug log
     setSelectedPin(pin);
     setDetailsModalVisible(true);
+    console.log('🔔 Details modal should be visible now'); // Debug log
   };
 
   // Close details modal
@@ -78,6 +89,11 @@ export default function MapScreen() {
     setModalVisible(false);
     setNoteInput("");
     setNewPinCoords(null);
+    // Reset to default icon settings
+    const defaultCategory = getCategoryInfo('general');
+    setSelectedCategory('general');
+    setSelectedIcon(defaultCategory.icon as PinIconName);
+    setSelectedColor(defaultCategory.color as PinColor);
   };
 
   // Handle map tap (only for empty areas)
@@ -85,23 +101,29 @@ export default function MapScreen() {
     // Don't handle if any modal is open
     if (modalVisible || detailsModalVisible) return;
     
-    console.log('🗺️ Map pressed'); // Debug log
+    console.log('🗺️ Map pressed - opening add pin modal'); // Debug log
     const { coordinate } = event.nativeEvent;
     setNewPinCoords(coordinate);
     setModalVisible(true);
   };
 
-  // Save new pin with note
+  // Save new pin with note and custom icon
   const saveNote = async () => {
     if (!newPinCoords || !noteInput.trim()) return;
 
     setSavingPin(true);
     try {
-      await addPin(newPinCoords.latitude, newPinCoords.longitude, noteInput.trim());
+      await addPin(
+        newPinCoords.latitude, 
+        newPinCoords.longitude, 
+        noteInput.trim(),
+        selectedIcon,
+        selectedColor,
+        selectedCategory
+      );
       cancelAddNote();
     } catch (error) {
       console.error('Error saving pin:', error);
-      // Error is handled by the usePins hook
     } finally {
       setSavingPin(false);
     }
@@ -116,7 +138,6 @@ export default function MapScreen() {
       closeDetailsModal();
     } catch (error) {
       console.error('Error deleting pin:', error);
-      // Error is handled by the usePins hook
     }
   };
 
@@ -129,19 +150,26 @@ export default function MapScreen() {
     }
   };
 
-  // Emergency reset for debugging
-  const emergencyReset = () => {
-    console.log('🚨 Emergency reset triggered');
-    setModalVisible(false);
-    setDetailsModalVisible(false);
-    setSelectedPin(null);
-    setNewPinCoords(null);
-    setNoteInput("");
-    setSavingPin(false);
-  };
-
   // Show loading if location or pins are loading
   const isLoading = !location || pinsLoading;
+
+  // Convert pin color to a format react-native-maps can use
+  const getPinColor = (pin: Pin) => {
+    // react-native-maps supports limited colors, so we'll use a mapping
+    const colorMap: { [key: string]: string } = {
+      '#FF6B6B': 'red',
+      '#4ECDC4': 'azure',
+      '#45B7D1': 'blue',
+      '#96CEB4': 'green',
+      '#FECA57': 'yellow',
+      '#FF9FF3': 'violet',
+      '#54A0FF': 'cyan',
+      '#5F27CD': 'purple',
+      '#00D2D3': 'azure',
+      '#FF9F43': 'orange',
+    };
+    return colorMap[pin.icon_color] || 'red';
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -170,33 +198,37 @@ export default function MapScreen() {
               longitude: location.coords.longitude,
             }}
             title="You are here"
+            pinColor="blue"
           />
 
           {/* Render saved pins */}
-          {pins.map((pin, index) => {
-            console.log(`🗺️ Rendering pin ${index}:`, pin.id, pin.note.substring(0, 20));
+          {Array.isArray(pins) && pins.map((pin, index) => {
+            console.log(`🗺️ Rendering marker for pin ${index}: ${pin.id}`);
             return (
               <Marker
                 key={pin.id || `pin-${index}`}
                 coordinate={{ latitude: pin.latitude, longitude: pin.longitude }}
-                title={`Pin ${index + 1}`}
+                title={getCategoryInfo(pin.category).label}
                 description={pin.note}
-                pinColor="orange"
+                pinColor={getPinColor(pin)}
                 onPress={(event) => {
-                  console.log('🔘 Marker onPress event triggered for:', pin.id);
+                  console.log('🔘 Marker onPress triggered for pin:', pin.id);
                   event.stopPropagation();
                   handlePinPress(pin);
                 }}
                 onCalloutPress={() => {
-                  console.log('💬 Callout pressed for:', pin.id);
+                  console.log('💬 Callout onPress triggered for pin:', pin.id);
                   handlePinPress(pin);
                 }}
                 onSelect={() => {
-                  console.log('✅ Marker selected:', pin.id);
+                  console.log('✅ Marker onSelect triggered for pin:', pin.id);
                 }}
                 onDeselect={() => {
-                  console.log('❌ Marker deselected:', pin.id);
+                  console.log('❌ Marker onDeselect triggered for pin:', pin.id);
                 }}
+                // Try adding these additional props for better touch handling
+                tracksViewChanges={false}
+                stopPropagation={true}
               />
             );
           })}
@@ -211,28 +243,39 @@ export default function MapScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Debug Panel
+      {/* Temporary Debug Panel
       <View style={styles.debugPanel}>
         <Text style={styles.debugText}>Pins: {pins.length}</Text>
         <Text style={styles.debugText}>
           Details Modal: {detailsModalVisible ? '✅ OPEN' : '❌ CLOSED'}
         </Text>
         <Text style={styles.debugText}>
-          Selected Pin: {selectedPin?.id || 'None'}
+          Add Modal: {modalVisible ? '✅ OPEN' : '❌ CLOSED'}
+        </Text>
+        <Text style={styles.debugText}>
+          Selected Pin: {selectedPin?.id?.substring(0, 8) || 'None'}
         </Text>
         {pins.length > 0 && (
           <TouchableOpacity 
             style={styles.testButton} 
-            onPress={() => handlePinPress(pins[0])}
+            onPress={() => {
+              console.log('🧪 Test button pressed - triggering first pin');
+              handlePinPress(pins[0]);
+            }}
           >
             <Text style={styles.testButtonText}>TEST FIRST PIN</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity 
-          style={[styles.testButton, { backgroundColor: colors.error, marginTop: 10 }]} 
-          onPress={emergencyReset}
+          style={[styles.testButton, { backgroundColor: colors.error, marginTop: 5 }]} 
+          onPress={() => {
+            console.log('🔄 Reset button pressed');
+            setModalVisible(false);
+            setDetailsModalVisible(false);
+            setSelectedPin(null);
+          }}
         >
-          <Text style={styles.testButtonText}>RESET MODALS</Text>
+          <Text style={styles.testButtonText}>RESET</Text>
         </TouchableOpacity>
       </View> */}
 
@@ -263,7 +306,18 @@ export default function MapScreen() {
             activeOpacity={1} 
             onPress={(e) => e.stopPropagation()}
           >
-            <Text style={styles.modalTitle}>Add a Note</Text>
+            <Text style={styles.modalTitle}>Add a Pin</Text>
+            
+            {/* Icon Selector */}
+            <IconSelector
+              selectedIcon={selectedIcon}
+              selectedColor={selectedColor}
+              selectedCategory={selectedCategory}
+              onIconChange={setSelectedIcon}
+              onColorChange={setSelectedColor}
+              onCategoryChange={setSelectedCategory}
+            />
+            
             <TextInput
               placeholder="Type your note here..."
               placeholderTextColor={colors.accent}
@@ -300,14 +354,14 @@ export default function MapScreen() {
         transparent={true} 
         animationType="fade"
         onRequestClose={closeDetailsModal}
-        onShow={() => console.log('📱 Details modal shown')}
-        onDismiss={() => console.log('📱 Details modal dismissed')}
+        onShow={() => console.log('📱 Pin details modal onShow triggered')}
+        onDismiss={() => console.log('📱 Pin details modal onDismiss triggered')}
       >
         <TouchableOpacity 
           style={styles.modalOverlay} 
           activeOpacity={1} 
           onPress={() => {
-            console.log('🔘 Modal overlay pressed');
+            console.log('🔘 Modal overlay pressed - closing details');
             closeDetailsModal();
           }}
         >
@@ -315,24 +369,32 @@ export default function MapScreen() {
             style={styles.modalContainer} 
             activeOpacity={1} 
             onPress={(e) => {
-              console.log('🔘 Modal container pressed');
+              console.log('🔘 Modal content pressed - preventing close');
               e.stopPropagation();
             }}
           >
             <Text style={styles.modalTitle}>Pin Details</Text>
             {selectedPin ? (
               <View style={styles.pinDetailsContent}>
+                <View style={styles.pinHeader}>
+                  <View 
+                    style={[
+                      styles.pinColorIndicator, 
+                      { backgroundColor: selectedPin.icon_color }
+                    ]} 
+                  />
+                  <Text style={styles.pinCategoryText}>
+                    {getCategoryInfo(selectedPin.category).label}
+                  </Text>
+                </View>
                 <Text style={styles.pinDetailsText}>
-                  ID: {selectedPin.id}
+                  Note: {selectedPin.note}
                 </Text>
                 <Text style={styles.pinDetailsText}>
                   Latitude: {selectedPin.latitude.toFixed(6)}
                 </Text>
                 <Text style={styles.pinDetailsText}>
                   Longitude: {selectedPin.longitude.toFixed(6)}
-                </Text>
-                <Text style={styles.pinDetailsText}>
-                  Note: {selectedPin.note}
                 </Text>
                 {selectedPin.created_at && (
                   <Text style={styles.pinDetailsText}>
@@ -341,7 +403,9 @@ export default function MapScreen() {
                 )}
               </View>
             ) : (
-              <Text style={styles.pinDetailsText}>No pin data available</Text>
+              <View style={styles.pinDetailsContent}>
+                <Text style={styles.pinDetailsText}>No pin data available</Text>
+              </View>
             )}
             <TouchableOpacity style={styles.deleteButton} onPress={handleDeletePin}>
               <Text style={styles.deleteButtonText}>DELETE PIN</Text>
@@ -409,6 +473,69 @@ const styles = StyleSheet.create({
   signOutButtonText: {
     color: colors.background,
     fontSize: 18,
+    fontWeight: "900",
+    fontFamily: PIXEL_FONT,
+    letterSpacing: 2,
+    textTransform: "uppercase",
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  pinDetailsContent: {
+    marginBottom: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 15,
+    borderWidth: 4,
+    borderColor: colors.accent,
+    borderRadius: 0,
+    backgroundColor: colors.background,
+    width: "100%",
+  },
+  pinDetailsText: {
+    fontSize: 16,
+    color: colors.text,
+    fontFamily: PIXEL_FONT,
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  deleteButton: {
+    width: "100%",
+    backgroundColor: colors.error,
+    paddingVertical: 16,
+    borderRadius: 0,
+    alignItems: "center",
+    borderWidth: 4,
+    borderColor: colors.text,
+    shadowColor: colors.error,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 0,
+    marginBottom: 15,
+  },
+  deleteButtonText: {
+    color: colors.background,
+    fontSize: 20,
+    fontWeight: "900",
+    fontFamily: PIXEL_FONT,
+    letterSpacing: 2,
+    textTransform: "uppercase",
+  },
+  cancelButton: {
+    width: "100%",
+    backgroundColor: colors.text,
+    paddingVertical: 16,
+    borderRadius: 0,
+    alignItems: "center",
+    borderWidth: 4,
+    borderColor: colors.accent,
+    shadowColor: colors.text,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 0,
+  },
+  cancelButtonText: {
+    color: colors.accent,
+    fontSize: 20,
     fontWeight: "900",
     fontFamily: PIXEL_FONT,
     letterSpacing: 2,
@@ -498,68 +625,23 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
     textTransform: "uppercase",
   },
-  buttonDisabled: {
-    opacity: 0.7,
-  },
-  pinDetailsContent: {
-    marginBottom: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 15,
-    borderWidth: 4,
-    borderColor: colors.accent,
-    borderRadius: 0,
-    backgroundColor: colors.background,
-    width: "100%",
-  },
-  pinDetailsText: {
-    fontSize: 18,
-    color: colors.text,
-    fontFamily: PIXEL_FONT,
-    letterSpacing: 1,
+  pinHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginBottom: 10,
   },
-  deleteButton: {
-    width: "100%",
-    backgroundColor: colors.error,
-    paddingVertical: 16,
-    borderRadius: 0,
-    alignItems: "center",
-    borderWidth: 4,
-    borderColor: colors.text,
-    shadowColor: colors.error,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.8,
-    shadowRadius: 0,
-    marginBottom: 15,
+  pinColorIndicator: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    marginRight: 10,
   },
-  deleteButtonText: {
-    color: colors.background,
-    fontSize: 20,
-    fontWeight: "900",
-    fontFamily: PIXEL_FONT,
-    letterSpacing: 2,
-    textTransform: "uppercase",
-  },
-  cancelButton: {
-    width: "100%",
-    backgroundColor: colors.text,
-    paddingVertical: 16,
-    borderRadius: 0,
-    alignItems: "center",
-    borderWidth: 4,
-    borderColor: colors.accent,
-    shadowColor: colors.text,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.8,
-    shadowRadius: 0,
-  },
-  cancelButtonText: {
+  pinCategoryText: {
+    fontSize: 18,
+    fontWeight: 'bold',
     color: colors.accent,
-    fontSize: 20,
-    fontWeight: "900",
     fontFamily: PIXEL_FONT,
-    letterSpacing: 2,
-    textTransform: "uppercase",
+    letterSpacing: 1,
   },
   errorContainer: {
     position: "absolute",
@@ -596,7 +678,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 100,
     left: 20,
-    backgroundColor: "rgba(0,0,0,0.7)",
+    right: 20,
+    backgroundColor: colors.card,
     padding: 15,
     borderRadius: 0,
     borderWidth: 4,
@@ -605,16 +688,19 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.8,
     shadowRadius: 0,
+    flexDirection: "column",
+    alignItems: "flex-start",
     zIndex: 10,
   },
   debugText: {
-    color: colors.background,
     fontSize: 14,
+    color: colors.text,
     fontFamily: PIXEL_FONT,
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     marginBottom: 5,
   },
   testButton: {
+    width: "100%",
     backgroundColor: colors.accent,
     paddingVertical: 12,
     paddingHorizontal: 24,
@@ -626,13 +712,14 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.8,
     shadowRadius: 0,
+    marginTop: 10,
   },
   testButtonText: {
     color: colors.background,
     fontSize: 16,
     fontWeight: "900",
     fontFamily: PIXEL_FONT,
-    letterSpacing: 2,
+    letterSpacing: 1,
     textTransform: "uppercase",
   },
 });

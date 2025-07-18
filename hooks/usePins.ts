@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSelector } from 'react-redux';
+import { PinCategory, PinColor, PinIconName } from '../constants/PinTypes';
 import { supabase } from '../lib/supabase';
 
 export interface Pin {
@@ -7,6 +8,9 @@ export interface Pin {
   latitude: number;
   longitude: number;
   note: string;
+  icon_name: PinIconName;
+  icon_color: PinColor;
+  category: PinCategory;
   created_at?: string;
 }
 
@@ -44,7 +48,14 @@ export function usePins() {
   };
 
   // Add a new pin
-  const addPin = async (latitude: number, longitude: number, note: string) => {
+  const addPin = async (
+    latitude: number, 
+    longitude: number, 
+    note: string,
+    iconName: PinIconName = 'map-pin',
+    iconColor: PinColor = '#FF6B6B',
+    category: PinCategory = 'general'
+  ) => {
     if (!user?.id) {
       throw new Error('User not authenticated');
     }
@@ -55,6 +66,9 @@ export function usePins() {
         latitude,
         longitude,
         note: note.trim(),
+        icon_name: iconName,
+        icon_color: iconColor,
+        category,
       };
 
       const { data, error } = await supabase
@@ -99,7 +113,7 @@ export function usePins() {
     }
   };
 
-  // Update a pin (for future use)
+  // Update a pin
   const updatePin = async (pinId: string, updates: Partial<Pin>) => {
     if (!user?.id) {
       throw new Error('User not authenticated');
@@ -128,6 +142,16 @@ export function usePins() {
     }
   };
 
+  // Get pins by category
+  const getPinsByCategory = (category: PinCategory) => {
+    return pins.filter(pin => pin.category === category);
+  };
+
+  // Get unique categories used by user
+  const getUsedCategories = () => {
+    return Array.from(new Set(pins.map(pin => pin.category)));
+  };
+
   // Load pins when user changes
   useEffect(() => {
     if (user?.id) {
@@ -147,5 +171,7 @@ export function usePins() {
     updatePin,
     refreshPins: loadPins,
     clearError: () => setError(null),
+    getPinsByCategory,
+    getUsedCategories,
   };
 } 
