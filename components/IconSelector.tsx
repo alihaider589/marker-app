@@ -15,8 +15,10 @@ import {
   PinCategory,
   PinColor,
   PinIconName,
-  getCategoryInfo
+  getCategoryInfo,
+  getIconInfo
 } from '../constants/PinTypes';
+import PinIcon from './PinIcon';
 
 const PIXEL_FONT = colors.pixelFont;
 
@@ -60,12 +62,14 @@ export default function IconSelector({
             ]}
             onPress={() => handleCategorySelect(key as PinCategory)}
           >
-            <View 
-              style={[
-                styles.categoryIcon, 
-                { backgroundColor: category.color }
-              ]} 
-            />
+            <View style={styles.categoryIconContainer}>
+              <PinIcon
+                name={category.icon}
+                library={category.library}
+                size={32}
+                color={colors.text}
+              />
+            </View>
             <Text style={styles.categoryLabel}>{category.label}</Text>
           </TouchableOpacity>
         ))}
@@ -86,12 +90,14 @@ export default function IconSelector({
             ]}
             onPress={() => onIconChange(icon.name)}
           >
-            <View 
-              style={[
-                styles.iconPreview, 
-                { backgroundColor: selectedColor }
-              ]} 
-            />
+            <View style={styles.iconPreviewContainer}>
+              <PinIcon
+                name={icon.name}
+                library={icon.library}
+                size={32}
+                color={selectedColor}
+              />
+            </View>
             <Text style={styles.iconLabel}>{icon.label}</Text>
           </TouchableOpacity>
         ))}
@@ -112,7 +118,14 @@ export default function IconSelector({
             ]}
             onPress={() => onColorChange(color)}
           >
-            <View style={[styles.colorPreview, { backgroundColor: color }]} />
+            <View style={styles.colorPreview}>
+              <PinIcon
+                name={selectedIcon}
+                library={getIconInfo(selectedIcon).library}
+                size={28}
+                color={color}
+              />
+            </View>
           </TouchableOpacity>
         ))}
       </View>
@@ -125,7 +138,14 @@ export default function IconSelector({
         style={styles.selectorButton}
         onPress={() => setModalVisible(true)}
       >
-        <View style={[styles.previewIcon, { backgroundColor: selectedColor }]} />
+        <View style={styles.previewIconContainer}>
+          <PinIcon
+            name={selectedIcon}
+            library={getIconInfo(selectedIcon).library}
+            size={24}
+            color={selectedColor}
+          />
+        </View>
         <Text style={styles.selectorText}>
           {getCategoryInfo(selectedCategory).label}
         </Text>
@@ -227,13 +247,16 @@ const styles = StyleSheet.create({
     width: "100%",
     alignSelf: "stretch",
   },
-  previewIcon: {
-    width: 24,
-    height: 24,
+  previewIconContainer: {
+    width: 32,
+    height: 32,
     borderRadius: 0,
     marginRight: 15,
     borderWidth: 2,
-    borderColor: colors.text,
+    borderColor: colors.accent,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   selectorText: {
     color: colors.text,
@@ -332,13 +355,16 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     backgroundColor: colors.card,
   },
-  categoryIcon: {
-    width: 32,
-    height: 32,
+  categoryIconContainer: {
+    width: 40,
+    height: 40,
     borderRadius: 0,
     marginBottom: 10,
     borderWidth: 2,
-    borderColor: colors.text,
+    borderColor: colors.accent,
+    backgroundColor: colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   categoryLabel: {
     fontSize: 14,
@@ -366,13 +392,16 @@ const styles = StyleSheet.create({
     borderColor: colors.accent,
     backgroundColor: colors.card,
   },
-  iconPreview: {
-    width: 32,
-    height: 32,
+  iconPreviewContainer: {
+    width: 40,
+    height: 40,
     borderRadius: 0,
     marginBottom: 10,
     borderWidth: 2,
-    borderColor: colors.text,
+    borderColor: colors.accent,
+    backgroundColor: colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   iconLabel: {
     fontSize: 12,
@@ -407,7 +436,10 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 0,
     borderWidth: 2,
-    borderColor: colors.text,
+    borderColor: colors.accent,
+    backgroundColor: colors.card,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   doneButton: {
     backgroundColor: colors.accent,

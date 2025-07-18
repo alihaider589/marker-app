@@ -52,7 +52,7 @@ export function usePins() {
     latitude: number, 
     longitude: number, 
     note: string,
-    iconName: PinIconName = 'map-pin',
+    iconName: PinIconName = 'location-pin',
     iconColor: PinColor = '#FF6B6B',
     category: PinCategory = 'general'
   ) => {

@@ -1,37 +1,39 @@
 // Pin category definitions
 export const PIN_CATEGORIES = {
-  general: { label: 'General', icon: 'map-pin', color: '#FF6B6B' },
-  restaurant: { label: 'Food & Drink', icon: 'restaurant', color: '#4ECDC4' },
-  travel: { label: 'Travel', icon: 'airplane', color: '#45B7D1' },
-  work: { label: 'Work', icon: 'briefcase', color: '#96CEB4' },
-  home: { label: 'Home', icon: 'home', color: '#FECA57' },
-  favorite: { label: 'Favorite', icon: 'heart', color: '#FF9FF3' },
-  event: { label: 'Event', icon: 'calendar', color: '#54A0FF' },
-  shopping: { label: 'Shopping', icon: 'shopping-bag', color: '#5F27CD' },
-  nature: { label: 'Nature', icon: 'tree', color: '#00D2D3' },
-  health: { label: 'Health', icon: 'plus-circle', color: '#FF6B6B' },
+  general: { label: 'General', icon: 'location-pin', color: '#FF6B6B', library: 'MaterialIcons' },
+  restaurant: { label: 'Food & Drink', icon: 'restaurant', color: '#4ECDC4', library: 'MaterialIcons' },
+  travel: { label: 'Travel', icon: 'airplane', color: '#45B7D1', library: 'MaterialIcons' },
+  work: { label: 'Work', icon: 'work', color: '#96CEB4', library: 'MaterialIcons' },
+  home: { label: 'Home', icon: 'home', color: '#FECA57', library: 'MaterialIcons' },
+  favorite: { label: 'Favorite', icon: 'favorite', color: '#FF9FF3', library: 'MaterialIcons' },
+  event: { label: 'Event', icon: 'event', color: '#54A0FF', library: 'MaterialIcons' },
+  shopping: { label: 'Shopping', icon: 'shopping-cart', color: '#5F27CD', library: 'MaterialIcons' },
+  nature: { label: 'Nature', icon: 'park', color: '#00D2D3', library: 'MaterialIcons' },
+  health: { label: 'Health', icon: 'local-hospital', color: '#FF6B6B', library: 'MaterialIcons' },
 } as const;
 
 // Available icon options
 export const PIN_ICONS = [
-  { name: 'map-pin', label: 'Default Pin' },
-  { name: 'restaurant', label: 'Restaurant' },
-  { name: 'airplane', label: 'Travel' },
-  { name: 'briefcase', label: 'Work' },
-  { name: 'home', label: 'Home' },
-  { name: 'heart', label: 'Favorite' },
-  { name: 'calendar', label: 'Event' },
-  { name: 'shopping-bag', label: 'Shopping' },
-  { name: 'tree', label: 'Nature' },
-  { name: 'plus-circle', label: 'Health' },
-  { name: 'camera', label: 'Photo Spot' },
-  { name: 'coffee', label: 'Coffee' },
-  { name: 'gas-station', label: 'Gas Station' },
-  { name: 'hospital', label: 'Hospital' },
-  { name: 'school', label: 'School' },
-  { name: 'bank', label: 'Bank' },
-  { name: 'parking', label: 'Parking' },
-  { name: 'wifi', label: 'WiFi Spot' },
+  { name: 'location-pin', label: 'Default Pin', library: 'MaterialIcons' },
+  { name: 'restaurant', label: 'Restaurant', library: 'MaterialIcons' },
+  { name: 'airplane', label: 'Travel', library: 'MaterialIcons' },
+  { name: 'work', label: 'Work', library: 'MaterialIcons' },
+  { name: 'home', label: 'Home', library: 'MaterialIcons' },
+  { name: 'favorite', label: 'Favorite', library: 'MaterialIcons' },
+  { name: 'event', label: 'Event', library: 'MaterialIcons' },
+  { name: 'shopping-cart', label: 'Shopping', library: 'MaterialIcons' },
+  { name: 'park', label: 'Nature', library: 'MaterialIcons' },
+  { name: 'local-hospital', label: 'Health', library: 'MaterialIcons' },
+  { name: 'camera', label: 'Photo Spot', library: 'MaterialIcons' },
+  { name: 'local-cafe', label: 'Coffee', library: 'MaterialIcons' },
+  { name: 'local-gas-station', label: 'Gas Station', library: 'MaterialIcons' },
+  { name: 'school', label: 'School', library: 'MaterialIcons' },
+  { name: 'account-balance', label: 'Bank', library: 'MaterialIcons' },
+  { name: 'local-parking', label: 'Parking', library: 'MaterialIcons' },
+  { name: 'wifi', label: 'WiFi Spot', library: 'MaterialIcons' },
+  { name: 'fitness-center', label: 'Gym', library: 'MaterialIcons' },
+  { name: 'local-pharmacy', label: 'Pharmacy', library: 'MaterialIcons' },
+  { name: 'pets', label: 'Pet Friendly', library: 'MaterialIcons' },
 ] as const;
 
 // Predefined color palette
@@ -57,10 +59,16 @@ export const PIN_COLORS = [
 export type PinCategory = keyof typeof PIN_CATEGORIES;
 export type PinIconName = typeof PIN_ICONS[number]['name'];
 export type PinColor = typeof PIN_COLORS[number];
+export type IconLibrary = 'MaterialIcons' | 'FontAwesome' | 'Ionicons';
 
 // Helper function to get category info
 export const getCategoryInfo = (category: PinCategory) => {
   return PIN_CATEGORIES[category] || PIN_CATEGORIES.general;
+};
+
+// Helper function to get icon info
+export const getIconInfo = (iconName: PinIconName) => {
+  return PIN_ICONS.find(icon => icon.name === iconName) || PIN_ICONS[0];
 };
 
 // Helper function to get icon label

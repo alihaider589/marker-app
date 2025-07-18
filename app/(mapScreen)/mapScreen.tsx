@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import MapView, { MapPressEvent, Marker } from "react-native-maps";
 import IconSelector from "../../components/IconSelector";
+import PinIcon from "../../components/PinIcon";
 import { colors } from "../../constants/Colors";
 import { PinCategory, PinColor, PinIconName, getCategoryInfo } from "../../constants/PinTypes";
 import useAuth from "../../hooks/useAuth";
@@ -36,9 +37,25 @@ export default function MapScreen() {
   const [savingPin, setSavingPin] = useState(false);
 
   // Icon selector state
-  const [selectedIcon, setSelectedIcon] = useState<PinIconName>('map-pin');
+  const [selectedIcon, setSelectedIcon] = useState<PinIconName>('location-pin');
   const [selectedColor, setSelectedColor] = useState<PinColor>('#FF6B6B');
   const [selectedCategory, setSelectedCategory] = useState<PinCategory>('general');
+
+  // Reset to default icon settings
+  const resetIconSettings = () => {
+    const defaultCategory = getCategoryInfo('general');
+    setSelectedCategory('general');
+    setSelectedIcon(defaultCategory.icon as PinIconName);
+    setSelectedColor(defaultCategory.color as PinColor);
+  };
+
+  // Cancel add note modal
+  const cancelAddNote = () => {
+    setModalVisible(false);
+    setNoteInput("");
+    setNewPinCoords(null);
+    resetIconSettings();
+  };
 
   // Load current location
   useEffect(() => {
@@ -64,18 +81,6 @@ export default function MapScreen() {
   const closeDetailsModal = () => {
     setDetailsModalVisible(false);
     setSelectedPin(null);
-  };
-
-  // Cancel add note modal
-  const cancelAddNote = () => {
-    setModalVisible(false);
-    setNoteInput("");
-    setNewPinCoords(null);
-    // Reset to default icon settings
-    const defaultCategory = getCategoryInfo('general');
-    setSelectedCategory('general');
-    setSelectedIcon(defaultCategory.icon as PinIconName);
-    setSelectedColor(defaultCategory.color as PinColor);
   };
 
   // Handle map tap (only for empty areas)
@@ -134,23 +139,27 @@ export default function MapScreen() {
   // Show loading if location or pins are loading
   const isLoading = !location || pinsLoading;
 
-  // Convert pin color to a format react-native-maps can use
-  const getPinColor = (pin: Pin) => {
-    // react-native-maps supports limited colors, so we'll use a mapping
-    const colorMap: { [key: string]: string } = {
-      '#FF6B6B': 'red',
-      '#4ECDC4': 'azure',
-      '#45B7D1': 'blue',
-      '#96CEB4': 'green',
-      '#FECA57': 'yellow',
-      '#FF9FF3': 'violet',
-      '#54A0FF': 'cyan',
-      '#5F27CD': 'purple',
-      '#00D2D3': 'azure',
-      '#FF9F43': 'orange',
+  // Helper function to handle pins with missing icon data (backward compatibility)
+  const getPinIconData = (pin: Pin) => {
+    // If pin has icon data, use it
+    if (pin.icon_name && pin.icon_color && pin.category) {
+      return {
+        iconName: pin.icon_name,
+        iconColor: pin.icon_color,
+        category: pin.category,
+      };
+    }
+    
+    // Fallback for old pins without icon data
+    const defaultCategory = getCategoryInfo('general');
+    return {
+      iconName: defaultCategory.icon as PinIconName,
+      iconColor: defaultCategory.color as PinColor,
+      category: 'general' as PinCategory,
     };
-    return colorMap[pin.icon_color] || 'red';
   };
+
+
 
   return (
     <SafeAreaView style={styles.container}>
@@ -183,24 +192,36 @@ export default function MapScreen() {
           />
 
           {/* Render saved pins */}
-          {pins.map((pin, index) => (
-            <Marker
-              key={pin.id || `pin-${index}`}
-              coordinate={{ latitude: pin.latitude, longitude: pin.longitude }}
-              title={getCategoryInfo(pin.category).label}
-              description={pin.note}
-              pinColor={getPinColor(pin)}
-              onPress={(event) => {
-                event.stopPropagation();
-                handlePinPress(pin);
-              }}
-              onCalloutPress={() => {
-                handlePinPress(pin);
-              }}
-              tracksViewChanges={false}
-              stopPropagation={true}
-            />
-          ))}
+          {pins.map((pin, index) => {
+            const pinData = getPinIconData(pin);
+            const categoryInfo = getCategoryInfo(pinData.category);
+            return (
+              <Marker
+                key={pin.id || `pin-${index}`}
+                coordinate={{ latitude: pin.latitude, longitude: pin.longitude }}
+                title={categoryInfo.label}
+                description={pin.note}
+                onPress={(event) => {
+                  event.stopPropagation();
+                  handlePinPress(pin);
+                }}
+                onCalloutPress={() => {
+                  handlePinPress(pin);
+                }}
+                tracksViewChanges={false}
+                stopPropagation={true}
+              >
+                <View style={styles.customMarker}>
+                  <PinIcon 
+                    name={pinData.iconName} 
+                    library={categoryInfo.library || "MaterialIcons"}
+                    color={pinData.iconColor} 
+                    size={32} 
+                  />
+                </View>
+              </Marker>
+            );
+          })}
         </MapView>
       )}
 
@@ -331,12 +352,20 @@ export default function MapScreen() {
                         <View 
                           style={[
                             styles.pinColorIndicator, 
-                            { backgroundColor: selectedPin.icon_color }
+                            { backgroundColor: selectedPin.icon_color || '#FF6B6B' }
                           ]} 
                         />
                         <Text style={styles.pinCategoryText}>
-                          {getCategoryInfo(selectedPin.category).label}
+                          {getCategoryInfo(selectedPin.category || 'general').label}
                         </Text>
+                      </View>
+                      <View style={styles.pinIconContainer}>
+                        <PinIcon 
+                          name={selectedPin.icon_name || 'location-pin'} 
+                          library="MaterialIcons"
+                          color={selectedPin.icon_color || '#FF6B6B'} 
+                          size={40} 
+                        />
                       </View>
                       <Text style={styles.pinDetailsText}>
                         Note: {selectedPin.note}
@@ -620,6 +649,9 @@ const styles = StyleSheet.create({
     fontFamily: PIXEL_FONT,
     letterSpacing: 1,
   },
+  pinIconContainer: {
+    marginBottom: 15,
+  },
   errorContainer: {
     position: "absolute",
     top: 100,
@@ -656,6 +688,19 @@ const styles = StyleSheet.create({
     width: "100%",
     justifyContent: "center",
     alignItems: "center",
+  },
+  customMarker: {
+    backgroundColor: colors.background,
+    padding: 8,
+    borderRadius: 20,
+    borderWidth: 3,
+    borderColor: colors.accent,
+    shadowColor: colors.accent,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.8,
+    shadowRadius: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 
