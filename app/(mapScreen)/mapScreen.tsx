@@ -3,8 +3,11 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -231,50 +234,65 @@ export default function MapScreen() {
           activeOpacity={1} 
           onPress={cancelAddNote}
         >
-          <TouchableOpacity 
-            style={styles.modalContainer} 
-            activeOpacity={1} 
-            onPress={(e) => e.stopPropagation()}
+          <KeyboardAvoidingView 
+            style={styles.keyboardContainer}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 80 : 30}
+            enabled={true}
           >
-            <Text style={styles.modalTitle}>Add a Pin</Text>
-            
-            {/* Icon Selector */}
-            <IconSelector
-              selectedIcon={selectedIcon}
-              selectedColor={selectedColor}
-              selectedCategory={selectedCategory}
-              onIconChange={setSelectedIcon}
-              onColorChange={setSelectedColor}
-              onCategoryChange={setSelectedCategory}
-            />
-            
-            <TextInput
-              placeholder="Type your note here..."
-              placeholderTextColor={colors.accent}
-              style={styles.input}
-              value={noteInput}
-              onChangeText={setNoteInput}
-              multiline
-              autoFocus={true}
-              editable={!savingPin}
-            />
             <TouchableOpacity 
-              style={[styles.saveButton, savingPin && styles.buttonDisabled]} 
-              onPress={saveNote}
-              disabled={savingPin || !noteInput.trim()}
+              style={styles.modalContainer} 
+              activeOpacity={1} 
+              onPress={(e) => e.stopPropagation()}
             >
-              <Text style={styles.saveButtonText}>
-                {savingPin ? "SAVING..." : "SAVE PIN"}
-              </Text>
+              <ScrollView 
+                contentContainerStyle={styles.modalScrollContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.modalContentWrapper}>
+                  <Text style={styles.modalTitle}>Add a Pin</Text>
+                  
+                  {/* Icon Selector */}
+                  <IconSelector
+                    selectedIcon={selectedIcon}
+                    selectedColor={selectedColor}
+                    selectedCategory={selectedCategory}
+                    onIconChange={setSelectedIcon}
+                    onColorChange={setSelectedColor}
+                    onCategoryChange={setSelectedCategory}
+                  />
+                  
+                  <TextInput
+                    placeholder="Type your note here..."
+                    placeholderTextColor={colors.accent}
+                    style={styles.input}
+                    value={noteInput}
+                    onChangeText={setNoteInput}
+                    multiline
+                    autoFocus={true}
+                    editable={!savingPin}
+                  />
+                  <TouchableOpacity 
+                    style={[styles.saveButton, savingPin && styles.buttonDisabled]} 
+                    onPress={saveNote}
+                    disabled={savingPin || !noteInput.trim()}
+                  >
+                    <Text style={styles.saveButtonText}>
+                      {savingPin ? "SAVING..." : "SAVE PIN"}
+                    </Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.cancelButton} 
+                    onPress={cancelAddNote}
+                    disabled={savingPin}
+                  >
+                    <Text style={styles.cancelButtonText}>CANCEL</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.cancelButton} 
-              onPress={cancelAddNote}
-              disabled={savingPin}
-            >
-              <Text style={styles.cancelButtonText}>CANCEL</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
+          </KeyboardAvoidingView>
         </TouchableOpacity>
       </Modal>
 
@@ -290,52 +308,66 @@ export default function MapScreen() {
           activeOpacity={1} 
           onPress={closeDetailsModal}
         >
-          <TouchableOpacity 
-            style={styles.modalContainer} 
-            activeOpacity={1} 
-            onPress={(e) => e.stopPropagation()}
+          <KeyboardAvoidingView 
+            style={styles.keyboardContainer}
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 50}
           >
-            <Text style={styles.modalTitle}>Pin Details</Text>
-            {selectedPin ? (
-              <View style={styles.pinDetailsContent}>
-                <View style={styles.pinHeader}>
-                  <View 
-                    style={[
-                      styles.pinColorIndicator, 
-                      { backgroundColor: selectedPin.icon_color }
-                    ]} 
-                  />
-                  <Text style={styles.pinCategoryText}>
-                    {getCategoryInfo(selectedPin.category).label}
-                  </Text>
+            <TouchableOpacity 
+              style={styles.modalContainer} 
+              activeOpacity={1} 
+              onPress={(e) => e.stopPropagation()}
+            >
+              <ScrollView 
+                contentContainerStyle={styles.modalScrollContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.modalContentWrapper}>
+                  <Text style={styles.modalTitle}>Pin Details</Text>
+                  {selectedPin ? (
+                    <View style={styles.pinDetailsContent}>
+                      <View style={styles.pinHeader}>
+                        <View 
+                          style={[
+                            styles.pinColorIndicator, 
+                            { backgroundColor: selectedPin.icon_color }
+                          ]} 
+                        />
+                        <Text style={styles.pinCategoryText}>
+                          {getCategoryInfo(selectedPin.category).label}
+                        </Text>
+                      </View>
+                      <Text style={styles.pinDetailsText}>
+                        Note: {selectedPin.note}
+                      </Text>
+                      <Text style={styles.pinDetailsText}>
+                        Latitude: {selectedPin.latitude.toFixed(6)}
+                      </Text>
+                      <Text style={styles.pinDetailsText}>
+                        Longitude: {selectedPin.longitude.toFixed(6)}
+                      </Text>
+                      {selectedPin.created_at && (
+                        <Text style={styles.pinDetailsText}>
+                          Created: {new Date(selectedPin.created_at).toLocaleDateString()}
+                        </Text>
+                      )}
+                    </View>
+                  ) : (
+                    <View style={styles.pinDetailsContent}>
+                      <Text style={styles.pinDetailsText}>No pin data available</Text>
+                    </View>
+                  )}
+                  <TouchableOpacity style={styles.deleteButton} onPress={handleDeletePin}>
+                    <Text style={styles.deleteButtonText}>DELETE PIN</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={styles.cancelButton} onPress={closeDetailsModal}>
+                    <Text style={styles.cancelButtonText}>CLOSE</Text>
+                  </TouchableOpacity>
                 </View>
-                <Text style={styles.pinDetailsText}>
-                  Note: {selectedPin.note}
-                </Text>
-                <Text style={styles.pinDetailsText}>
-                  Latitude: {selectedPin.latitude.toFixed(6)}
-                </Text>
-                <Text style={styles.pinDetailsText}>
-                  Longitude: {selectedPin.longitude.toFixed(6)}
-                </Text>
-                {selectedPin.created_at && (
-                  <Text style={styles.pinDetailsText}>
-                    Created: {new Date(selectedPin.created_at).toLocaleDateString()}
-                  </Text>
-                )}
-              </View>
-            ) : (
-              <View style={styles.pinDetailsContent}>
-                <Text style={styles.pinDetailsText}>No pin data available</Text>
-              </View>
-            )}
-            <TouchableOpacity style={styles.deleteButton} onPress={handleDeletePin}>
-              <Text style={styles.deleteButtonText}>DELETE PIN</Text>
+              </ScrollView>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.cancelButton} onPress={closeDetailsModal}>
-              <Text style={styles.cancelButtonText}>CLOSE</Text>
-            </TouchableOpacity>
-          </TouchableOpacity>
+          </KeyboardAvoidingView>
         </TouchableOpacity>
       </Modal>
     </SafeAreaView>
@@ -412,6 +444,7 @@ const styles = StyleSheet.create({
     borderRadius: 0,
     backgroundColor: colors.background,
     width: "100%",
+    alignSelf: "stretch",
   },
   pinDetailsText: {
     fontSize: 16,
@@ -422,6 +455,7 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     width: "100%",
+    minWidth: "100%",
     backgroundColor: colors.error,
     paddingVertical: 16,
     borderRadius: 0,
@@ -433,6 +467,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 0,
     marginBottom: 15,
+    alignSelf: "stretch",
   },
   deleteButtonText: {
     color: colors.background,
@@ -444,6 +479,7 @@ const styles = StyleSheet.create({
   },
   cancelButton: {
     width: "100%",
+    minWidth: "100%",
     backgroundColor: colors.text,
     paddingVertical: 16,
     borderRadius: 0,
@@ -454,6 +490,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.8,
     shadowRadius: 0,
+    alignSelf: "stretch",
   },
   cancelButtonText: {
     color: colors.accent,
@@ -482,20 +519,32 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.8)",
     justifyContent: "center",
     alignItems: "center",
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 40,
   },
   modalContainer: {
     backgroundColor: colors.card,
     width: "90%",
+    maxWidth: 400,
+    maxHeight: "90%",
     padding: 32,
     borderRadius: 0,
     borderWidth: 4,
     borderColor: colors.accent,
-    alignItems: "center",
     shadowColor: colors.accent,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 0,
+    alignSelf: "center",
+  },
+  modalScrollContent: {
+    width: "100%",
+    alignItems: 'center',
+    paddingBottom: 20,
+  },
+  modalContentWrapper: {
+    width: "100%",
+    alignItems: 'center',
   },
   modalTitle: {
     fontSize: 24,
@@ -508,9 +557,12 @@ const styles = StyleSheet.create({
     textShadowColor: colors.background,
     textShadowOffset: { width: 2, height: 2 },
     textShadowRadius: 2,
+    width: "100%",
   },
   input: {
     width: "100%",
+    minWidth: "100%",
+    maxWidth: "100%",
     height: 100,
     borderColor: colors.accent,
     borderWidth: 4,
@@ -524,9 +576,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     letterSpacing: 1,
     textAlignVertical: "top",
+    alignSelf: "stretch",
   },
   saveButton: {
     width: "100%",
+    minWidth: "100%",
     backgroundColor: colors.accent,
     paddingVertical: 16,
     borderRadius: 0,
@@ -538,6 +592,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.8,
     shadowRadius: 0,
     marginBottom: 15,
+    alignSelf: "stretch",
   },
   saveButtonText: {
     color: colors.background,
@@ -595,6 +650,12 @@ const styles = StyleSheet.create({
   errorCloseText: {
     fontSize: 24,
     color: colors.background,
+  },
+  keyboardContainer: {
+    flex: 1,
+    width: "100%",
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
 

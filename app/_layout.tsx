@@ -63,9 +63,7 @@ function RootLayoutNav() {
   }, [isAuthenticated, isRestoring, segments]);
 
   // Show loading screen while restoring auth state
-  if (isRestoring) {
-    return <LoadingScreen />;
-  }
+
 
   return (
     <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>

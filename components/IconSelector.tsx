@@ -1,21 +1,21 @@
 import React, { useState } from 'react';
 import {
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { colors } from '../constants/Colors';
 import {
-    PIN_CATEGORIES,
-    PIN_COLORS,
-    PIN_ICONS,
-    PinCategory,
-    PinColor,
-    PinIconName,
-    getCategoryInfo
+  PIN_CATEGORIES,
+  PIN_COLORS,
+  PIN_ICONS,
+  PinCategory,
+  PinColor,
+  PinIconName,
+  getCategoryInfo
 } from '../constants/PinTypes';
 
 const PIXEL_FONT = colors.pixelFont;
@@ -209,6 +209,8 @@ export default function IconSelector({
 const styles = StyleSheet.create({
   container: {
     marginBottom: 20,
+    width: "100%",
+    alignSelf: "stretch",
   },
   selectorButton: {
     flexDirection: 'row',
@@ -222,6 +224,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.5,
     shadowRadius: 0,
+    width: "100%",
+    alignSelf: "stretch",
   },
   previewIcon: {
     width: 24,
@@ -248,6 +252,7 @@ const styles = StyleSheet.create({
   modalContainer: {
     backgroundColor: colors.card,
     width: '95%',
+    maxWidth: 400,
     maxHeight: '80%',
     borderWidth: 4,
     borderColor: colors.accent,
@@ -256,6 +261,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 0,
+    alignSelf: "center",
   },
   modalTitle: {
     fontSize: 24,

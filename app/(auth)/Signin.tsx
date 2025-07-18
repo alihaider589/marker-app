@@ -2,7 +2,10 @@
 import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
+    KeyboardAvoidingView,
+    Platform,
     SafeAreaView,
+    ScrollView,
     StyleSheet,
     Text,
     TextInput,
@@ -61,48 +64,60 @@ export default function Signin() {
         onClose={() => setShowErrorPopup(false)}
         open={showErrorPopup}
       />
-      <View style={styles.card}>
-        <Text style={styles.title}>Sign In</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          placeholderTextColor={colors.accent}
-          value={credentails.email}
-          onChangeText={(e: string) =>
-            setCredentials({ ...credentails, email: e })
-          }
-          keyboardType="email-address"
-          autoCapitalize="none"
-          editable={!isLoading}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor={colors.accent}
-          value={credentails.password}
-          onChangeText={(e: string) =>
-            setCredentials({ ...credentails, password: e })
-          }
-          secureTextEntry
-          editable={!isLoading}
-        />
-        <TouchableOpacity 
-          style={[styles.button, isLoading && styles.buttonDisabled]} 
-          onPress={handleSignIn}
-          disabled={isLoading}
+      <KeyboardAvoidingView 
+        style={styles.keyboardContainer}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.buttonText}>
-            {isLoading ? "SIGNING IN..." : "SIGN IN"}
-          </Text>
-        </TouchableOpacity>
-        
-        <View style={styles.linkContainer}>
-          <Text style={styles.linkText}>Don't have an account?</Text>
-          <TouchableOpacity onPress={navigateToSignUp} disabled={isLoading}>
-            <Text style={styles.link}>SIGN UP</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+          <View style={styles.card}>
+            <Text style={styles.title}>Sign In</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor={colors.accent}
+              value={credentails.email}
+              onChangeText={(e: string) =>
+                setCredentials({ ...credentails, email: e })
+              }
+              keyboardType="email-address"
+              autoCapitalize="none"
+              editable={!isLoading}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor={colors.accent}
+              value={credentails.password}
+              onChangeText={(e: string) =>
+                setCredentials({ ...credentails, password: e })
+              }
+              secureTextEntry
+              editable={!isLoading}
+            />
+            <TouchableOpacity 
+              style={[styles.button, isLoading && styles.buttonDisabled]} 
+              onPress={handleSignIn}
+              disabled={isLoading}
+            >
+              <Text style={styles.buttonText}>
+                {isLoading ? "SIGNING IN..." : "SIGN IN"}
+              </Text>
+            </TouchableOpacity>
+            
+            <View style={styles.linkContainer}>
+              <Text style={styles.linkText}>Don't have an account?</Text>
+              <TouchableOpacity onPress={navigateToSignUp} disabled={isLoading}>
+                <Text style={styles.link}>SIGN UP</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -110,9 +125,16 @@ export default function Signin() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: colors.background,
+  },
+  keyboardContainer: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.background,
+    paddingVertical: 20,
   },
   card: {
     width: "90%",
