@@ -6,11 +6,13 @@ interface ErrorPopupProps {
   open: boolean;
   onClose: () => void;
   errorMessage?: string;
+  type?: "error" | "success";
 }
 export default function ErrorPopup({
   open,
   errorMessage,
   onClose,
+  type = "error",
 }: ErrorPopupProps) {
   return (
     <Modal
@@ -21,7 +23,7 @@ export default function ErrorPopup({
     >
       <View style={styles.overlay}>
         <View style={styles.card}>
-          <Text style={styles.title}>Error</Text>
+          <Text style={styles.title}>{type === "error" ? "Error" : "Success"}</Text>
           <Text style={styles.message}>
             {errorMessage || "Unknown error occurred."}
           </Text>

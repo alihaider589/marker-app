@@ -1,4 +1,5 @@
 // import ParallaxScrollView from "@/components/ParallaxScrollView";
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
     SafeAreaView,
@@ -23,6 +24,7 @@ export default function Signin() {
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { signInWithEmail } = useAuth();
+  const router = useRouter();
 
   const handleSignIn = async () => {
     if (!credentails.email || !credentails.password) {
@@ -35,7 +37,6 @@ export default function Signin() {
     try {
       await signInWithEmail(credentails.email, credentails.password);
       console.log("Sign-in successful");
-      // Navigation will be handled automatically by the root layout
     } catch (error: any) {
       console.error("Sign-in error:", error);
       setShowErrorPopup(true);
@@ -47,6 +48,10 @@ export default function Signin() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const navigateToSignUp = () => {
+    router.push("/(auth)/Signup");
   };
 
   return (
@@ -90,6 +95,13 @@ export default function Signin() {
             {isLoading ? "SIGNING IN..." : "SIGN IN"}
           </Text>
         </TouchableOpacity>
+        
+        <View style={styles.linkContainer}>
+          <Text style={styles.linkText}>Don't have an account?</Text>
+          <TouchableOpacity onPress={navigateToSignUp} disabled={isLoading}>
+            <Text style={styles.link}>SIGN UP</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -165,5 +177,27 @@ const styles = StyleSheet.create({
     fontFamily: PIXEL_FONT,
     letterSpacing: 2,
     textTransform: "uppercase",
+  },
+  linkContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 24,
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  linkText: {
+    color: colors.text,
+    fontSize: 16,
+    fontFamily: PIXEL_FONT,
+    letterSpacing: 1,
+    marginRight: 8,
+  },
+  link: {
+    color: colors.accent,
+    fontSize: 16,
+    fontWeight: "900",
+    fontFamily: PIXEL_FONT,
+    letterSpacing: 1,
+    textDecorationLine: "underline",
   },
 });

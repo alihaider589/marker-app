@@ -75,6 +75,10 @@ function RootLayoutNav() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="(auth)/Signup"
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="(mapScreen)/mapScreen"
           options={{ headerShown: false }}
         />
